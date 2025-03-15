@@ -2,14 +2,21 @@ use bindgen::builder;
 use std::path::Path;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("cargo:rerun-if-changed=parse-lib.h");
-    println!("cargo:rerun-if-changed=parse-lib.c");
-    println!("cargo:rustc-link-arg=parse-lib.o");
-    // println!("cargo:rustc-link-search=native=.");
-    // println!("cargo:rustc-link-lib=static=parse-lib");
+    // Compile the C code first
+    cc::Build::new()
+        .file("parse-lib.c")
+        .compile("parse-lib");
 
-    let out_dir = std::env::var("OUT_DIR").unwrap();
-    let bindings = builder().header("parse-lib.h").allowlist_item("cups_.*").generate()?;
-    bindings.write_to_file(Path::new(&out_dir).join("bindings.rs"))?;
+    // Generate bindings
+    println!("cargo:rerun-if-changed=parse-lib.h");
+    let bindings = bindgen::Builder::default()
+        .header("parse-lib.h")
+        .allowlist_item("cups_.*")
+        .generate()?;
+
+    // Save bindings
+    let out_path = std::path::PathBuf::from(std::env::var("OUT_DIR")?);
+    bindings.write_to_file(out_path.join("bindings.rs"))?;
+
     Ok(())
 }
